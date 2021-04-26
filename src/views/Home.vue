@@ -8,7 +8,7 @@
         <v-text-field solo label="Descrizione" v-model="description"></v-text-field>
       </div>
     </div>
-    <v-row class="full-size d-flex align-center justify-center">
+    <v-row class="full-size d-flex align-center justify-center mt-15">
       <v-col>
         <div class="ml-15">
           <v-progress-circular
@@ -42,9 +42,6 @@
       <v-btn :disabled="!isRunning" icon x-large @click="stop">
         <v-icon>mdi-stop-circle-outline</v-icon>
       </v-btn>
-      <v-btn :disabled="!isRunning" icon x-large>
-        <v-icon v-on:click="copy">mdi-content-copy</v-icon>
-      </v-btn>
     </div>
     <v-snackbar v-model="snackbar">{{snackbarText}}</v-snackbar>
   </div>
@@ -72,18 +69,22 @@ export default {
       isRunning: false,
       snackbar: false,
       timerList: [],
-      snackbarText: ""
+      snackbarText: "",
+      startDate: undefined,
+      endDate: undefined,
+      resultDate: undefined,
+      prevDescription: ""
     };
   },
   methods: {
     play() {
+      this.startDate = this.currentDate();
       this.isRunning = true;
       var self = this;
       this.startAt = new Date();
       this.valueOutOfSixty = 0;
       this.minutes = 0;
       this.hours = 0;
-
       this.interval = setInterval(() => {
         if (self.valueOutOfSixty >= 59) {
           self.valueOutOfSixty = 0;
@@ -99,9 +100,11 @@ export default {
       }, 1000);
     },
     stop() {
+      this.endDate = this.currentDate();
       if (this.checkDescription()) {
+        var activity = this.getNewStamp();
         this.timerList.push({
-          text: this.getNewStamp(),
+          text: activity,
           icon: "mdi-clock"
         });
         this.isRunning = false;
@@ -111,33 +114,27 @@ export default {
         this.minutes = 0;
         this.hours = 0;
         this.description = "";
+        this.copy(activity);
       }
     },
     getNewStamp() {
-      var self = this;
-      this.summary = "";
-      this.summary += moment(this.startAt).format("YYYY/MM/DD, HH:mm");
-      this.summary += " - " + moment(this.endAt).format("YYYY/MM/DD, HH:mm");
-      this.summary +=
-        ", " + this.formattedHours + "h " + this.formattedMinutes + "m ";
-      this.summary += " - " + this.description;
-      return this.summary;
+      this.resultDate = this.dateDiff();
+      this.resultDate += " - " + this.description;
+      this.prevDescription = this.resultDate;
+      return this.resultDate;
     },
 
-    copy() {
+    copy(activity) {
       var self = this;
-      if (this.checkDescription()) {
-        this.summary = this.getNewStamp();
-
-        navigator.clipboard.writeText(this.summary).then(
-          function() {
-            self.snackbar = true;
-          },
-          function(err) {
-            console.error("Async: Could not copy text: ", err);
-          }
-        );
-      }
+      navigator.clipboard.writeText(activity).then(
+        function() {
+          self.snackbar = true;
+          self.snackbarText = "Attività conclusa. Testo Copiato";
+        },
+        function(err) {
+          console.error("Async: Could not copy text: ", err);
+        }
+      );
     },
     checkDescription() {
       if (this.description === undefined || this.description === "") {
@@ -148,6 +145,55 @@ export default {
         this.snackbarText = "Testo Copiato";
         return true;
       } else return true;
+    },
+    currentDate() {
+      var myDate = new Date();
+      var year = myDate.getFullYear();
+      var month = myDate.getMonth();
+      if (month <= 9) month = "0" + (month + 1);
+      var day = myDate.getDate();
+      if (day <= 9) day = "0" + day;
+      var hour = myDate.getHours();
+      if (hour <= 9) hour = "0" + hour;
+      var minutes = myDate.getMinutes();
+      if (minutes <= 9) minutes = "0" + minutes;
+      var seconds = myDate.getSeconds();
+      if (seconds <= 9) seconds = "0" + seconds;
+
+      var date = new Date(year, month, day, hour, minutes, seconds);
+
+      return date;
+    },
+
+    dateDiff() {
+      if (this.endDate < this.startDate) {
+        this.endDate.setDate(this.endDate.getDate() + 1);
+      }
+      var diff = this.endDate - this.startDate;
+
+      var msec = diff;
+      var hh = Math.floor(msec / 1000 / 60 / 60);
+      msec -= hh * 1000 * 60 * 60;
+      var mm = Math.floor(msec / 1000 / 60);
+      msec -= mm * 1000 * 60;
+      var ss = Math.floor(msec / 1000);
+      msec -= ss * 1000;
+
+      var result = "";
+      result += "L'ultima attività è durata :  ";
+      if (hh != 0) {
+        result += hh;
+        result += "h, ";
+      }
+
+      if (mm != 0) {
+        result += mm;
+        result += "m e ";
+      }
+      result += ss;
+      result += "s";
+
+      return result;
     }
   },
   computed: {
